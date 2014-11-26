@@ -10,15 +10,17 @@
 
 PATH=${PATH}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+## We want to run MTR in report mode, force IPv4, run 10 cycles and have 5 second pause between cycles to attempt to minmise ICMP rate limiting giving false positives for loss
 MTR_BIN=`which mtr`
 MTR_OPS=" -4 -n -r -c 10 -i 5 "
+
 DATE_BIN=`which date`
 GREP_BIN=`which grep`
 AWK_BIN=`which awk`
 OUTPUT="/tmp"
 
 
-## List of "ping hosts" 
+## List of "ping hosts", can be space or newline seperated. 
 ping_host="<list of hosts here>"
 
 for host in ${ping_host} 
