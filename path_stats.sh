@@ -17,7 +17,7 @@ MTR_OPS=" -4 -n -r -c 10 -i 5 "
 DATE_BIN=`which date`
 GREP_BIN=`which grep`
 AWK_BIN=`which awk`
-OUTPUT="/tmp"
+OUTPUT_DIR="/tmp"
 
 
 ## List of "ping hosts", can be space or newline seperated. 
@@ -25,6 +25,6 @@ ping_host="<list of hosts here>"
 
 for host in ${ping_host} 
 do
-	START=`${DATE_BIN}` && OUTPUT=`${MTR_BIN} ${MTR_OPS} ${host} | grep -vE '[A-Za-z]' | awk '{print $2, $3, $6}' | sed -e 's/\ /\(/g;s/\%/\)/g;s/)(/,/g' | tr "\n" "-" | sed -e 's/-/)->/g' | sed -e 's/->$//g'`  && echo "${START}::${OUTPUT}"  >> ${OUTPUT}/${host}.log  & 
+	START=`${DATE_BIN}` && OUTPUT=`${MTR_BIN} ${MTR_OPS} ${host} | grep -vE '[A-Za-z]' | awk '{print $2, $3, $6}' | sed -e 's/\ /\(/g;s/\%/\)/g;s/)(/,/g' | tr "\n" "-" | sed -e 's/-/)->/g' | sed -e 's/->$//g'`  && echo "${START}::${OUTPUT}"  >> ${OUTPUT_DIR}/${host}.log  & 
 	sleep 10
 done 
