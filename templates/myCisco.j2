@@ -1,0 +1,41 @@
+{% for VpnConnection in config -%}
+{% for Vpn in VpnConnection['CustomerGatewayConfiguration'] %}
+crypto keyring {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
+  local-address {{ Vpn['cgw_tunnel_outside_address'] }}
+  pre-shared-key address {{ Vpn['vpn_tunnel_outside_address'] }} key {{ Vpn['ike_pre_shared_key'] }}
+exit
+
+crypto isakmp profile {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
+  local-address {{ Vpn['cgw_tunnel_outside_address'] }}
+  match identity address {{ Vpn['vpn_tunnel_outside_address'] }}
+  keyring {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
+exit
+
+interface Tunnel{{ VpnConnection['NetId'] }}{{ loop.index }}
+  description {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }} {{ VpnConnection['CidrBlock'] }}
+  ip vrf forwarding ADMIN
+  ip address {{ Vpn['cgw_tunnel_inside_address'] }} {{ Vpn['cgw_tunnel_inside_mask'] }}
+  ip virtual-reassembly
+  tunnel source {{ Vpn['cgw_tunnel_outside_address'] }}
+  tunnel destination {{ Vpn['vpn_tunnel_outside_address'] }}
+  tunnel mode ipsec ipv4
+  tunnel protection ipsec profile AWS-IPSEC-PROFILE
+  ip tcp adjust-mss 1387 
+  no shutdown
+exit
+
+router bgp {{ Vpn['cgw_bgp_asn'] }}
+  address-family ipv4 vrf ADMIN
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} remote-as {{ Vpn['vpn_bgp_asn'] }}
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} description {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }} {{ VpnConnection['CidrBlock'] }}
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} activate
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} timers 10 30 30
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} activate
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} soft-reconfiguration inbound
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} prefix-list AWS-EXPORT out
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} route-map PRIMARY-IN in
+  neighbor {{ Vpn['vpn_tunnel_inside_address'] }} route-map PRIMARY-OUT out
+  exit
+exit
+{% endfor %}
+{% endfor %}
