@@ -1,3 +1,36 @@
+#################################################################################
+          VPN Connections to router: {{ config[0]['RouterIP'] }}
+#################################################################################
+
+crypto ipsec security-association replay window-size 128
+crypto ipsec transform-set AWS-TSET esp-aes esp-sha-hmac 
+crypto ipsec transform-set ipsec-prop-vpn-aa2ecbc3-0 esp-aes esp-sha-hmac 
+crypto ipsec df-bit clear
+
+crypto ipsec profile AWS-IPSEC-PROFILE
+ set transform-set AWS-TSET 
+ set pfs group2
+
+crypto isakmp policy 200
+ encr aes 
+ authentication pre-share
+ group 2  
+ lifetime 28800
+crypto isakmp keepalive 10 10
+
+ip prefix-list AWS-EXPORT seq 5 deny 0.0.0.0/0
+ip prefix-list AWS-EXPORT seq 10 permit 10.0.0.0/8 le 32
+
+route-map BACKUP-IN permit 10
+ set metric 100
+ set local-preference 50
+route-map PRIMARY-OUT permit 10
+ set metric 0
+route-map PRIMARY-IN permit 10
+ set local-preference 200
+route-map BACKUP-OUT permit 10
+ set metric 100
+
 {% for VpnConnection in config -%}
 {% for Vpn in VpnConnection['CustomerGatewayConfiguration'] %}
 crypto keyring {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
@@ -6,26 +39,26 @@ crypto keyring {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}
 exit
 
 crypto isakmp profile {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
-  local-address {{ Vpn['cgw_tunnel_outside_address'] }}
-  match identity address {{ Vpn['vpn_tunnel_outside_address'] }}
-  keyring {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
+   local-address {{ Vpn['cgw_tunnel_outside_address'] }}
+   match identity address {{ Vpn['vpn_tunnel_outside_address'] }}
+   keyring {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }}
 exit
 
 interface Tunnel{{ VpnConnection['NetId'] }}{{ loop.index }}
-  description {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }} {{ VpnConnection['CidrBlock'] }}
-  ip vrf forwarding ADMIN
-  ip address {{ Vpn['cgw_tunnel_inside_address'] }} {{ Vpn['cgw_tunnel_inside_mask'] }}
-  ip virtual-reassembly
-  tunnel source {{ Vpn['cgw_tunnel_outside_address'] }}
-  tunnel destination {{ Vpn['vpn_tunnel_outside_address'] }}
-  tunnel mode ipsec ipv4
-  tunnel protection ipsec profile AWS-IPSEC-PROFILE
-  ip tcp adjust-mss 1387 
-  no shutdown
+ description {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }} {{ VpnConnection['CidrBlock'] }}
+ ip vrf forwarding ADMIN
+ ip address {{ Vpn['cgw_tunnel_inside_address'] }} {{ Vpn['cgw_tunnel_inside_mask'] }}
+ ip virtual-reassembly
+ tunnel source {{ Vpn['cgw_tunnel_outside_address'] }}
+ tunnel destination {{ Vpn['vpn_tunnel_outside_address'] }}
+ tunnel mode ipsec ipv4
+ tunnel protection ipsec profile AWS-IPSEC-PROFILE
+ ip tcp adjust-mss 1387 
+ no shutdown
 exit
 
 router bgp {{ Vpn['cgw_bgp_asn'] }}
-  address-family ipv4 vrf ADMIN
+ address-family ipv4 vrf ADMIN
   neighbor {{ Vpn['vpn_tunnel_inside_address'] }} remote-as {{ Vpn['vpn_bgp_asn'] }}
   neighbor {{ Vpn['vpn_tunnel_inside_address'] }} description {{ VpnConnection['Region'] }}_{{ VpnConnection['Tags']['Name'] }}_{{ loop.index }} {{ VpnConnection['CidrBlock'] }}
   neighbor {{ Vpn['vpn_tunnel_inside_address'] }} activate
