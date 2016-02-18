@@ -2,14 +2,15 @@ import boto3
 import json
 import re
 import xml.etree.ElementTree as ET
-import jinja2
+import pprint
 
 def amzn_xml_to_json ( amzn_xml ):
 
 	root = ET.fromstring(amzn_xml)
-        tun = dict()
+        ret = []
 
 	for tunnel in root.findall("ipsec_tunnel"):
+                tun = {}
 		# Local Params of the VPN gateway
                 tun['cgw_tunnel_outside_address']  = tunnel.find("customer_gateway/tunnel_outside_address/ip_address").text
                 tun['cgw_tunnel_inside_address']  = tunnel.find("customer_gateway/tunnel_inside_address/ip_address").text
@@ -49,24 +50,26 @@ def amzn_xml_to_json ( amzn_xml ):
 		tun['ipsec_tcp_mss_adjustment'] = tunnel.find("ipsec/tcp_mss_adjustment").text
                 tun['ipsec_dpd_interval'] = tunnel.find("ipsec/dead_peer_detection/interval").text
                 tun['ipsec_dpd_retries'] = tunnel.find("ipsec/dead_peer_detection/retries").text
+                ret.append(tun)
+        return ret
 
-		return tun
+def main():
+    ## Main 
+    client = boto3.client('ec2', region_name='ap-southeast-1')
+    
+    response = client.describe_vpn_connections( DryRun=False, )
+    
+    vpns = response["VpnConnections"]
+    
+    i = 0
+    conf = {} 
+    for child in vpns:
+        for key, value in child.iteritems():
+            if re.search("CustomerGatewayConfiguration", key):
+                conf[i] = amzn_xml_to_json(value)
+        i += 1 
+    
+    pprint.pprint(conf)
 
-## Main 
-client = boto3.client('ec2')
-
-response = client.describe_vpn_connections( DryRun=False, )
-
-vpns = response["VpnConnections"]
-
-i = 0
-conf = {} 
-for child in vpns:
-    for key, value in child.iteritems():
-        if re.search("CustomerGatewayConfiguration", key):
-            conf[i] = amzn_xml_to_json(value)
-    i += 1 
-
-for gateway in conf:
-    print gateway
-
+if __name__ == "__main__":
+     main()
