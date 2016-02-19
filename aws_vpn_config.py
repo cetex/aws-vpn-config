@@ -27,7 +27,11 @@ class awsVpnConfig(object):
         Gets vpn configurations for the region
         """
         data = self.client.describe_vpn_connections(DryRun=False)
-        self.data = data['VpnConnections']
+        self.data = []
+        # Remove deleted vpns since they're useless for us and just breaks everything else.
+        for vpn in data['VpnConnections']:
+            if vpn['State'] != "deleted":
+                self.data.append(vpn)
         # Hacky way, but region may be nice to access within each config
         for vpn in self.data:
             vpn['Region'] = self.region
