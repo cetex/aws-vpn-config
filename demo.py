@@ -4,7 +4,7 @@ from pprint import pprint
 from jinja2 import Environment, FileSystemLoader
 import os
 
-cfgrdr = awsVpnConfig(region='ap-southeast-1')
+cfgrdr = awsVpnConfig(region='eu-west-1')
 config = cfgrdr.get()
 
 # Resort the vpn configs
@@ -32,8 +32,8 @@ for vpn in config:
 
 templates = ['myCisco']
 templatedir = os.path.realpath("./templates")
-for key, value in newConfig.iteritems():
+for key, value in newConfig.items():
     ENV = Environment(loader=FileSystemLoader(templatedir))
     for tmplt in templates:
         template = ENV.get_template(tmplt + ".j2")
-        print template.render(config=value)
+        print(template.render(config=value))
